@@ -85,3 +85,22 @@ def test_verifier_config_uses_profile_roots(monkeypatch, tmp_path):
     generated = path.read_text()
     assert "packages/api/tests" in generated
     assert "packages/api/src" in generated
+
+
+def test_verifier_config_selects_node_for_javascript_profile(monkeypatch, tmp_path):
+    base = tmp_path / "base.yml"
+    base.write_text("test_paths: [tests/]\nsrc_paths: [src/]\nsuite_target: tests\n")
+    monkeypatch.setattr(service, "VERIFIER_CFG", base)
+    path = service._verifier_config(
+        {
+            "profile": {
+                "languages": ["typescript"],
+                "test_roots": ["tests"],
+                "source_roots": ["src"],
+            }
+        },
+        tmp_path / "verdict.json",
+    )
+    generated = path.read_text()
+    assert "test_framework: node" in generated
+    assert "--test-reporter=junit" in generated

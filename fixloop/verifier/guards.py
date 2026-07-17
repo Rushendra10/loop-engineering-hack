@@ -53,6 +53,7 @@ EVASION_PATTERNS = [
 ]
 
 ASSERTION_RE = re.compile(r"^\s*(assert\b|self\.assert|expect\()")
+JS_ASSERTION_RE = re.compile(r"^\s*(assert\.(?:deepEqual|deepStrictEqual|equal|match|ok|rejects|strictEqual|throws)\b|expect\()")
 
 
 def count_assertions(repo, sha, test_paths):
@@ -61,9 +62,10 @@ def count_assertions(repo, sha, test_paths):
     n = 0
     ls = sh(["git", "ls-tree", "-r", "--name-only", sha], repo).stdout.splitlines()
     for f in ls:
-        if in_any(f, test_paths) and f.endswith(".py"):
+        if in_any(f, test_paths) and Path(f).suffix in {".py", ".js", ".mjs", ".cjs", ".ts", ".tsx"}:
             blob = sh(["git", "show", f"{sha}:{f}"], repo).stdout
-            n += sum(1 for line in blob.splitlines() if ASSERTION_RE.match(line))
+            pattern = ASSERTION_RE if f.endswith(".py") else JS_ASSERTION_RE
+            n += sum(1 for line in blob.splitlines() if pattern.match(line))
     return n
 
 

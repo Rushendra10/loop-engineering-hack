@@ -108,7 +108,7 @@ Edit `verifier/verifier.yml` for your repo's `test_paths` / `src_paths` /
 ```
 verify.py           CLI + stage orchestration
 guards.py           static diff guards + literal scan
-runner.py           pytest execution, junit parsing, suite compare, probes
+runner.py           pytest/Node execution, junit parsing, suite compare, probes
 verifier.yml        per-target policy (lives with the verifier, never the target)
 buildkite/          trusted pipeline + bootstrap
 holdback/<issue>/   held-back metamorphic probes
@@ -124,5 +124,5 @@ examples/           end-to-end demo (setup + run)
   advisory.
 - Suite compare assumes the suite fits in the timeout; large repos need
   affected-test selection.
-- Python/pytest is the only wired-up runner; `pytest_cmd`/junit parsing is
-  the seam to swap in `bun test --reporter=junit`, jest, etc.
+- Python/pytest and dependency-free Node test suites are wired. Repositories
+  that need Jest, Vitest, or Bun still need a runner-specific adapter.

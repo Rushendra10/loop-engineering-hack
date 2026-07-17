@@ -179,6 +179,9 @@ def _verifier_config(result: dict, output: Path) -> Path:
     config["test_paths"] = profile["test_roots"]
     config["src_paths"] = profile["source_roots"]
     config["suite_target"] = profile["test_roots"][0]
+    if profile.get("languages") == ["typescript"]:
+        config["test_framework"] = "node"
+        config["node_test_cmd"] = ["node", "--test", "--test-reporter=junit"]
     path = output.parent / "verifier-generated.yml"
     path.write_text(yaml.safe_dump(config, sort_keys=False))
     return path
