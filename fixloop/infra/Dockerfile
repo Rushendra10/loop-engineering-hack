@@ -20,14 +20,17 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
  && apt-get update && apt-get install -y --no-install-recommends gh \
  && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir pytest pyyaml fastapi uvicorn httpx poetry pipenv
+# Official Cursor CLI installer writes cursor-agent to ~/.local/bin.
+ENV PATH="/root/.local/bin:/root/.cursor/bin:/root/.bun/bin:${PATH}"
 
-# --- Cursor agent CLI ---------------------------------------------------
 RUN curl https://cursor.com/install -fsS | bash \
  && curl -fsSL https://astral.sh/uv/install.sh | sh \
- && curl -fsSL https://bun.sh/install | bash
+ && curl -fsSL https://bun.sh/install | bash \
+ && cursor-agent --version
 
-ENV PATH="/root/.local/bin:/root/.cursor/bin:/root/.bun/bin:${PATH}"
+RUN pip install --no-cache-dir \
+    pytest pyyaml fastapi uvicorn httpx poetry pipenv \
+    stripe "x402[fastapi,evm]"
 
 WORKDIR /app
 COPY . /app
@@ -38,7 +41,12 @@ COPY . /app
 #   FIXLOOP_CURSOR_MODEL defaults to auto
 #   AKASHML_BASE_URL    OpenAI-compatible endpoint
 #   AKASHML_API_KEY
-#   FIXLOOP_PRICE_USDC  advertised per-call price (display only)
+# Optional x402 sandbox path:
+#   X402_ENABLED=true
+#   STRIPE_SECRET_KEY
+#   FACILITATOR_URL=https://www.x402.org/facilitator
+#   X402_NETWORK=eip155:84532
+#   FIXLOOP_PRICE_USDC=0.01
 
 EXPOSE 8080
 CMD ["uvicorn", "service.app:app", "--host", "0.0.0.0", "--port", "8080"]

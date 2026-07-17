@@ -17,10 +17,13 @@ import yaml
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from .payments import configure_payments
+from .ui import router as ui_router
 from worker.core import Worker
 
-
 app = FastAPI(title="fixloop")
+configure_payments(app)
+app.include_router(ui_router)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 JOBS_DIR = Path(os.environ.get("FIXLOOP_JOBS_DIR", REPO_ROOT / "jobs"))

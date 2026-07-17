@@ -1,39 +1,65 @@
-# Akash SDL for fixloop. Deploy via console.akash.network (fastest at a
-# hackathon) or `akash tx deployment create deploy.yaml`.
-# Sanity-check current SDL syntax with the Akash booth -- they will also
-# have testnet/credits vouchers for hackathon teams. Ask.
+# Akash SDL for the public API and private Buildkite verifier worker.
+#
+# Before deployment, copy this file to akash-deploy.prod.yaml, replace both
+# REPLACE_WITH_GIT_SHA tags, and add runtime credentials there. The production
+# copy is gitignored because Akash SDL environment variables are plaintext.
 version: "2.0"
 
 services:
   fixloop:
-    image: ghcr.io/rushendra10/fixloop:hackathon-20260717-service
+    image: ghcr.io/Rushendra10/fixloop:REPLACE_WITH_GIT_SHA
     expose:
       - port: 8080
         as: 80
         to:
           - global: true
     env:
-      # Add short-lived credentials in an uncommitted SDL only when the
-      # service integration needs them. Akash env values are visible to the
-      # selected provider.
       - VERIFIER_MODE=local
       - FIXLOOP_CURSOR_MODEL=auto
-      - FIXLOOP_PRICE_USDC=0.25
+      - X402_ENABLED=false
+      - X402_NETWORK=eip155:84532
+      - FACILITATOR_URL=https://www.x402.org/facilitator
+      - FIXLOOP_PRICE_USDC=0.01
+      # Add GH_TOKEN, CURSOR_API_KEY, STRIPE_SECRET_KEY, AKASHML_API_KEY,
+      # AKASHML_BASE_URL, and Buildkite API settings only to the ignored copy.
+
+  buildkite-agent:
+    image: ghcr.io/Rushendra10/fixloop-buildkite-agent:REPLACE_WITH_GIT_SHA
+    # The agent only polls Buildkite. This declares an internal endpoint to
+    # satisfy SDL service syntax without exposing the worker to the internet.
+    expose:
+      - port: 8080
+        to:
+          - global: false
+    env:
+      - BUILDKITE_AGENT_TAGS=queue=verifier
+      # Add BUILDKITE_AGENT_TOKEN only to the ignored production copy.
 
 profiles:
   compute:
     fixloop:
       resources:
         cpu:
+          units: 2
+        memory:
+          size: 4Gi
+        storage:
+          - size: 10Gi
+    buildkite-agent:
+      resources:
+        cpu:
           units: 1
         memory:
           size: 2Gi
         storage:
-          size: 5Gi
+          - size: 5Gi
   placement:
     dcloud:
       pricing:
         fixloop:
+          denom: uact
+          amount: 10000
+        buildkite-agent:
           denom: uact
           amount: 10000
 
@@ -41,4 +67,8 @@ deployment:
   fixloop:
     dcloud:
       profile: fixloop
+      count: 1
+  buildkite-agent:
+    dcloud:
+      profile: buildkite-agent
       count: 1
