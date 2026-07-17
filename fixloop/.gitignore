@@ -6,3 +6,4 @@ __pycache__/
 .venv/
 jobs/
 verdict.json
+infra/*.prod.yaml

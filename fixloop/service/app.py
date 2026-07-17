@@ -18,7 +18,12 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from .payments import configure_payments
+from .ui import router as ui_router
+
 app = FastAPI(title="fixloop")
+configure_payments(app)
+app.include_router(ui_router)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 JOBS_DIR = REPO_ROOT / "jobs"

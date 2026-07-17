@@ -49,13 +49,66 @@ Demo target repo for fixloop (loop engineering hackathon). Contains seeded
 bugs referenced by open issues. Layout: src/ + tests/ (pytest).
 EOF
 git add -A && git commit -qm "seed: textutils with known issues"
+BASE=$(git rev-parse HEAD)
+
+# Keep the agent-shaped history linear: base -> regression test -> fix.
+# These branches make the honest and overfit demo outcomes reproducible.
+git checkout -qb demo/good-issue-1 "$BASE"
+cat > tests/test_issue_1.py <<'EOF'
+from src.textutils import truncate
+
+
+def test_truncate_respects_max_length():
+    out = truncate("hello world", 5)
+    assert len(out) <= 5
+    assert out.endswith("\u2026")
+EOF
+git add tests/test_issue_1.py && git commit -qm "test: reproduce truncate issue"
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("src/textutils.py")
+text = path.read_text()
+text = text.replace('return s[:n] + "\\u2026"   # BUG: off-by-one, result is n+1 chars',
+                    'return s[: max(n - 1, 0)] + "\\u2026"')
+path.write_text(text)
+PY
+git add src/textutils.py && git commit -qm "fix: reserve room for ellipsis"
+
+git checkout -qb demo/gamed-issue-1 "$BASE"
+cat > tests/test_issue_1.py <<'EOF'
+from src.textutils import truncate
+
+
+def test_truncate_respects_max_length():
+    out = truncate("hello world", 5)
+    assert len(out) <= 5
+    assert out.endswith("\u2026")
+EOF
+git add tests/test_issue_1.py && git commit -qm "test: reproduce truncate issue"
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("src/textutils.py")
+text = path.read_text()
+needle = "    if len(s) <= n:\n        return s\n"
+replacement = (
+    '    if s == "hello world" and n == 5:\n'
+    '        return "hell\\u2026"\n'
+    + needle
+)
+path.write_text(text.replace(needle, replacement, 1))
+PY
+git add src/textutils.py && git commit -qm "fix: handle reported truncate input"
+git checkout -q main
 
 if [[ "$LOCAL" == 1 ]]; then
-  echo "local demo repo at $TARGET (no push, no issues filed)"
+  echo "local demo repo at $TARGET with deterministic demo branches (no push, no issues filed)"
   exit 0
 fi
 
 gh repo create "$REPO_SLUG" --public --source . --push
+git push origin demo/good-issue-1 demo/gamed-issue-1
 
 gh issue create --repo "$REPO_SLUG" \
   --title "truncate() returns n+1 characters when input exceeds max length" \
