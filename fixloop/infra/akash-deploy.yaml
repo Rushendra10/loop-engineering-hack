@@ -14,7 +14,8 @@ services:
         to:
           - global: true
     env:
-      - VERIFIER_MODE=buildkite
+      - VERIFIER_MODE=local
+      - FIXLOOP_CURSOR_MODEL=auto
       - X402_ENABLED=false
       - X402_NETWORK=eip155:84532
       - FACILITATOR_URL=https://www.x402.org/facilitator
