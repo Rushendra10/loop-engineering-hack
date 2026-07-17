@@ -14,6 +14,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 #   BUILDKITE_AGENT_TAGS    "queue=verifier"
 #
 # Pipeline settings in the Buildkite UI:
-#   repo  = your loop-eng-building-blocks repo (so checkout contains verifier/)
-#   steps = bash verifier/buildkite/scripts/bootstrap.sh
+#   repo  = https://github.com/Rushendra10/loop-engineering-hack.git
+#   steps = bash fixloop/verifier/buildkite/scripts/bootstrap.sh
 #   env   = VERIFIER_REPO=<canonical repo url>   (bootstrap refuses others)

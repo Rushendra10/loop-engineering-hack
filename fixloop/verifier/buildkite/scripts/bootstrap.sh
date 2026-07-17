@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Trusted bootstrap. Configure the Buildkite pipeline's ONLY step as:
-#     bash verifier/buildkite/scripts/bootstrap.sh
+#     bash fixloop/verifier/buildkite/scripts/bootstrap.sh
 # pointed at THIS repo (the verifier repo), not the target repo.
 #
 # Trust boundary recap -- three credentials, three blast radii:
@@ -17,4 +17,4 @@ if [[ "$ACTUAL" != "$EXPECTED_REPO" ]]; then
   exit 1
 fi
 
-buildkite-agent pipeline upload verifier/buildkite/pipeline.yml
+buildkite-agent pipeline upload fixloop/verifier/buildkite/pipeline.yml

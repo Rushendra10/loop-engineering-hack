@@ -52,7 +52,7 @@ the ignored `akash-deploy.prod.yaml` after the payment checks below are green.
 - [ ] Deploy hello-world to Akash via console with akash-deploy.yaml.
       Success = public URL returns anything. Save the URL in team chat.
 - [ ] Buildkite: create org + pipeline (repo = the monorepo; steps =
-      `bash verifier/buildkite/scripts/bootstrap.sh`; env
+      `bash fixloop/verifier/buildkite/scripts/bootstrap.sh`; env
       `VERIFIER_REPO=<repo url>`). Build + push the agent image
       (Dockerfile.buildkite-agent), deploy to Akash with
       BUILDKITE_AGENT_TOKEN + tags queue=verifier. Success = a manually

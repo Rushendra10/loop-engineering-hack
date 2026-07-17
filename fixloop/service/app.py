@@ -39,8 +39,12 @@ JOB_DEADLINE_S = int(os.environ.get("FIXLOOP_JOB_DEADLINE_S", "900"))
 
 # Buildkite mode
 BUILDKITE_API_TOKEN = os.environ.get("BUILDKITE_API_TOKEN", "")
-BUILDKITE_ORG = os.environ.get("BUILDKITE_ORG", "")
-BUILDKITE_PIPELINE = os.environ.get("BUILDKITE_PIPELINE", "")
+BUILDKITE_ORG = os.environ.get("BUILDKITE_ORG") or os.environ.get(
+    "BUILDKITE_ORGANIZATION_SLUG", ""
+)
+BUILDKITE_PIPELINE = os.environ.get("BUILDKITE_PIPELINE") or os.environ.get(
+    "BUILDKITE_PIPELINE_SLUG", ""
+)
 
 JOBS: dict[str, dict] = {}
 
@@ -236,8 +240,8 @@ def _verify_via_buildkite(target: Path, result: dict, issue_id: str) -> dict:
     """Trigger a Buildkite build and poll until verdict is available."""
     if not all([BUILDKITE_API_TOKEN, BUILDKITE_ORG, BUILDKITE_PIPELINE]):
         raise RuntimeError(
-            "Buildkite mode requires BUILDKITE_API_TOKEN, BUILDKITE_ORG, "
-            "and BUILDKITE_PIPELINE env vars"
+            "Buildkite mode requires BUILDKITE_API_TOKEN plus organization "
+            "and pipeline slugs"
         )
 
     remote_url = subprocess.run(
