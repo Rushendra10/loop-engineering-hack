@@ -13,9 +13,13 @@ import urllib.request
 import uuid
 from pathlib import Path
 
+import dotenv
+import httpx
 import yaml
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
+dotenv.load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from .payments import configure_payments
 from .ui import router as ui_router
@@ -32,6 +36,11 @@ VERIFIER_CFG = REPO_ROOT / "verifier" / "verifier.yml"
 HOLDBACK = REPO_ROOT / "verifier" / "holdback"
 VERIFIER_MODE = os.environ.get("VERIFIER_MODE", "local")
 JOB_DEADLINE_S = int(os.environ.get("FIXLOOP_JOB_DEADLINE_S", "900"))
+
+# Buildkite mode
+BUILDKITE_API_TOKEN = os.environ.get("BUILDKITE_API_TOKEN", "")
+BUILDKITE_ORG = os.environ.get("BUILDKITE_ORG", "")
+BUILDKITE_PIPELINE = os.environ.get("BUILDKITE_PIPELINE", "")
 
 JOBS: dict[str, dict] = {}
 
@@ -188,8 +197,9 @@ def _verifier_config(result: dict, output: Path) -> Path:
 
 
 def run_verifier(target: Path, result: dict, issue_id: str) -> dict:
+    """Run the verifier in the configured mode. Returns verdict dict."""
     if VERIFIER_MODE == "buildkite":
-        raise NotImplementedError("buildkite mode is not wired")
+        return _verify_via_buildkite(target, result, issue_id)
     output = target.parent / "verdict.json"
     config = _verifier_config(result, output)
     subprocess.run(
@@ -220,6 +230,87 @@ def run_verifier(target: Path, result: dict, issue_id: str) -> dict:
     if not output.exists():
         raise RuntimeError("verifier failed without producing a verdict")
     return json.loads(output.read_text())
+
+
+def _verify_via_buildkite(target: Path, result: dict, issue_id: str) -> dict:
+    """Trigger a Buildkite build and poll until verdict is available."""
+    if not all([BUILDKITE_API_TOKEN, BUILDKITE_ORG, BUILDKITE_PIPELINE]):
+        raise RuntimeError(
+            "Buildkite mode requires BUILDKITE_API_TOKEN, BUILDKITE_ORG, "
+            "and BUILDKITE_PIPELINE env vars"
+        )
+
+    remote_url = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        cwd=target, capture_output=True, text=True,
+    ).stdout.strip()
+
+    api_base = (
+        f"https://api.buildkite.com/v2/organizations/{BUILDKITE_ORG}"
+        f"/pipelines/{BUILDKITE_PIPELINE}"
+    )
+    headers = {"Authorization": f"Bearer {BUILDKITE_API_TOKEN}"}
+
+    # Trigger build
+    with httpx.Client(timeout=30) as client:
+        resp = client.post(
+            f"{api_base}/builds",
+            headers=headers,
+            json={
+                "commit": "HEAD",
+                "branch": "main",
+                "message": f"verify {issue_id}",
+                "meta_data": {
+                    "target_repo": remote_url,
+                    "base_sha": result["base_sha"],
+                    "test_sha": result["test_sha"],
+                    "fix_sha": result["fix_sha"],
+                    "issue_id": issue_id,
+                },
+            },
+        )
+        resp.raise_for_status()
+        build = resp.json()
+        build_number = build["number"]
+        build_url = build.get("web_url", "")
+
+    # Poll for terminal state
+    terminal_states = {"passed", "failed", "canceled", "blocked",
+                       "not_run", "soft_failed"}
+    poll_interval = 10
+    max_poll_time = 600
+    elapsed = 0
+    state = ""
+
+    with httpx.Client(timeout=30) as client:
+        while elapsed < max_poll_time:
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+
+            resp = client.get(f"{api_base}/builds/{build_number}",
+                              headers=headers)
+            resp.raise_for_status()
+            build = resp.json()
+            state = build.get("state", "")
+
+            if state in terminal_states:
+                break
+        else:
+            raise RuntimeError(
+                f"Buildkite build {build_number} timed out after "
+                f"{max_poll_time}s (last state: {state})"
+            )
+
+    # Extract verdict from build meta_data
+    meta = build.get("meta_data", {})
+    verdict_json_str = meta.get("verdict_json")
+    if not verdict_json_str:
+        raise RuntimeError(
+            f"Buildkite build {build_number} reached state '{state}' "
+            f"but no verdict_json in meta_data. Build URL: {build_url}"
+        )
+
+    return json.loads(verdict_json_str)
 
 
 def open_pr(target: Path, repo: str, branch: str, base_branch: str, verdict: dict) -> str:
