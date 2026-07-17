@@ -2,9 +2,9 @@
 # scripts/bootstrap.sh from a trusted checkout. Never `pipeline upload`
 # from the agent's branch.
 #
-# Pipeline repo setting = the loop-eng-building-blocks monorepo, so the
-# checkout already contains verifier/. Deps are baked into the agent image
-# (see p3-kit/Dockerfile.buildkite-agent) -- no docker plugin needed.
+# Pipeline repo setting = the loop-engineering-hack repository, so the checkout
+# contains fixloop/verifier/. Deps are baked into the agent image
+# (see fixloop/infra/Dockerfile.buildkite-agent) -- no docker plugin needed.
 #
 # Required build meta-data, set by the service when triggering:
 #   target_repo, base_sha, test_sha, fix_sha, issue_id
@@ -19,14 +19,14 @@ steps:
       git clone "$(buildkite-agent meta-data get target_repo)" /tmp/target
       git -C /tmp/target fetch origin '+refs/heads/*:refs/remotes/origin/*' --quiet
 
-      python3 verifier/verify.py \
+      python3 fixloop/verifier/verify.py \
         --repo /tmp/target \
         --base        "$(buildkite-agent meta-data get base_sha)" \
         --test-commit "$(buildkite-agent meta-data get test_sha)" \
         --fix-commit  "$(buildkite-agent meta-data get fix_sha)" \
         --issue       "$(buildkite-agent meta-data get issue_id)" \
-        --config verifier/verifier.yml \
-        --holdback-root verifier/holdback \
+        --config fixloop/verifier/verifier.yml \
+        --holdback-root fixloop/verifier/holdback \
         --out verdict.json
     soft_fail:
       - exit_status: 1
