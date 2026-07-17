@@ -114,9 +114,12 @@ def suite_compare(wt_base, wt_fix, cfg):
     retry; everything else is deterministic."""
     quarantine = set(cfg.get("flaky_quarantine", []))
     suite_target = cfg.get("suite_target", "tests")
+    # `node --test` discovers the repository suite when no file arguments are
+    # supplied. A bare `tests` argument is interpreted as a module filename.
+    suite_targets = [] if cfg.get("test_framework") == "node" else [suite_target]
 
-    _, base_r, _ = run_tests(wt_base, [suite_target], cfg)
-    _, fix_r, _ = run_tests(wt_fix, [suite_target], cfg)
+    _, base_r, _ = run_tests(wt_base, suite_targets, cfg)
+    _, fix_r, _ = run_tests(wt_fix, suite_targets, cfg)
 
     regressions, retried = [], []
     for tid, status in fix_r.items():
@@ -125,7 +128,7 @@ def suite_compare(wt_base, wt_fix, cfg):
                 extra = (["--test-name-pattern", tid.split("::")[-1]]
                          if cfg.get("test_framework") == "node"
                          else ["-k", tid.split("::")[-1]])
-                _, retry, _ = run_tests(wt_fix, [suite_target], cfg, extra=extra)
+                _, retry, _ = run_tests(wt_fix, suite_targets, cfg, extra=extra)
                 retried.append(tid)
                 if all(v == "passed" for v in retry.values()):
                     continue
