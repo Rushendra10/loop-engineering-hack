@@ -128,11 +128,15 @@ curl "https://api.stripe.com/v1/test_helpers/payment_intents/PI_ID/simulate_cryp
 ```
 
 If PaymentIntent creation returns `Received unknown parameter:
-payment_method_options[crypto][mode]`, the sandbox has the general crypto
-toggle but not Stripe's private-preview deposit-mode entitlement. This was the
-result of the 2026-07-17 live checkpoint. Keep `X402_ENABLED=false`, retain the
-automated x402 tests, and ask the Stripe booth or `machine-payments@stripe.com`
-to enable deposit mode. Do not debug the application code past the cutoff.
+payment_method_options[crypto][mode]`, first verify that Stripe Dashboard and
+`STRIPE_SECRET_KEY` point at the same sandbox where crypto is enabled. If it
+persists, that sandbox lacks the private-preview deposit-mode entitlement; ask
+the Stripe booth or `machine-payments@stripe.com` to enable it.
+
+Latest live checkpoint (2026-07-17): the correctly selected sandbox created a
+PaymentIntent, unpaid `POST /fix` returned 402, and the sandbox helper moved the
+intent from `processing` to `succeeded`. The separate on-chain `purl` step still
+requires faucet USDC in the disposable buyer wallet.
 
 - [ ] If the wallet/faucet is not ready in 15 minutes, retain automated
       payment tests and cut the live payment beat.
