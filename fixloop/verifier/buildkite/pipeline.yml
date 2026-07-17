@@ -1,0 +1,60 @@
+# Verifier pipeline. Lives in the protected verifier repo; uploaded by
+# scripts/bootstrap.sh from a trusted checkout. Never `pipeline upload`
+# from the agent's branch.
+#
+# Pipeline repo setting = the loop-eng-building-blocks monorepo, so the
+# checkout already contains verifier/. Deps are baked into the agent image
+# (see p3-kit/Dockerfile.buildkite-agent) -- no docker plugin needed.
+#
+# Required build meta-data, set by the service when triggering:
+#   target_repo, base_sha, test_sha, fix_sha, issue_id
+
+steps:
+  - label: ":lock: verify submission"
+    key: verify
+    agents:
+      queue: verifier
+    command: |
+      rm -rf /tmp/target
+      git clone "$(buildkite-agent meta-data get target_repo)" /tmp/target
+      git -C /tmp/target fetch origin '+refs/heads/*:refs/remotes/origin/*' --quiet
+
+      python3 verifier/verify.py \
+        --repo /tmp/target \
+        --base        "$(buildkite-agent meta-data get base_sha)" \
+        --test-commit "$(buildkite-agent meta-data get test_sha)" \
+        --fix-commit  "$(buildkite-agent meta-data get fix_sha)" \
+        --issue       "$(buildkite-agent meta-data get issue_id)" \
+        --config verifier/verifier.yml \
+        --holdback-root verifier/holdback \
+        --out verdict.json
+    soft_fail:
+      - exit_status: 1
+    artifact_paths:
+      - verdict.json
+
+  - label: ":memo: publish verdict"
+    depends_on: verify
+    allow_dependency_failure: true
+    agents:
+      queue: verifier
+    command: |
+      buildkite-agent artifact download verdict.json . --step verify
+      VERDICT=$(python3 -c "import json;print(json.load(open('verdict.json'))['verdict'])")
+      REASONS=$(python3 -c "import json;print(','.join(json.load(open('verdict.json'))['reason_codes']) or '-')")
+      STYLE=$([ "$VERDICT" = "verified" ] && echo success || echo error)
+      buildkite-agent annotate --style "$STYLE" \
+        "**verdict: $VERDICT** &nbsp; reasons: \`$REASONS\`"
+      buildkite-agent meta-data set verdict "$VERDICT"
+      buildkite-agent meta-data set verdict_json "$(cat verdict.json)"
+
+# --- P1 reference: trigger + poll from the service ------------------------
+# Trigger:
+#   POST https://api.buildkite.com/v2/organizations/{org}/pipelines/{pipe}/builds
+#   Authorization: Bearer $BUILDKITE_API_TOKEN
+#   {"commit":"HEAD","branch":"main","message":"verify issue-42",
+#    "meta_data":{"target_repo":"...","base_sha":"...","test_sha":"...",
+#                 "fix_sha":"...","issue_id":"issue-42"}}
+# Poll:
+#   GET  .../builds/{number}  ->  state == "passed"|"failed"|"soft_failed",
+#   meta_data.verdict / meta_data.verdict_json carry the result.

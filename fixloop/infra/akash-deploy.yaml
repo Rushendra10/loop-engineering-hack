@@ -1,0 +1,42 @@
+# Akash SDL for fixloop. Deploy via console.akash.network (fastest at a
+# hackathon) or `akash tx deployment create deploy.yaml`.
+# Sanity-check current SDL syntax with the Akash booth -- they will also
+# have testnet/credits vouchers for hackathon teams. Ask.
+version: "2.0"
+
+services:
+  fixloop:
+    image: ghcr.io/YOUR_GH_USER/fixloop:latest   # push image here first
+    expose:
+      - port: 8080
+        as: 80
+        to:
+          - global: true
+    env:
+      - GH_TOKEN=SET_IN_CONSOLE_SECRET
+      - AKASHML_BASE_URL=SET_ME
+      - AKASHML_API_KEY=SET_IN_CONSOLE_SECRET
+      - FIXLOOP_PRICE_USDC=0.25
+
+profiles:
+  compute:
+    fixloop:
+      resources:
+        cpu:
+          units: 2
+        memory:
+          size: 4Gi
+        storage:
+          size: 10Gi
+  placement:
+    dcloud:
+      pricing:
+        fixloop:
+          denom: uakt
+          amount: 10000
+
+deployment:
+  fixloop:
+    dcloud:
+      profile: fixloop
+      count: 1

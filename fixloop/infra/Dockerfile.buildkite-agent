@@ -1,0 +1,19 @@
+# Buildkite agent for the verifier queue -- deploy this on Akash.
+# The agent polls Buildkite for builds tagged queue=verifier and runs
+# verify.py directly (no docker-in-docker needed; deps baked in here).
+FROM buildkite/agent:3-ubuntu
+
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip git ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 install --no-cache-dir --break-system-packages pytest pyyaml
+
+# Runtime env (set in Akash console as secrets):
+#   BUILDKITE_AGENT_TOKEN   from Buildkite org agent settings
+#   BUILDKITE_AGENT_TAGS    "queue=verifier"
+#
+# Pipeline settings in the Buildkite UI:
+#   repo  = your loop-eng-building-blocks repo (so checkout contains verifier/)
+#   steps = bash verifier/buildkite/scripts/bootstrap.sh
+#   env   = VERIFIER_REPO=<canonical repo url>   (bootstrap refuses others)

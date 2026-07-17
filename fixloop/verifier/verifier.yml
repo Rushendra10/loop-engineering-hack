@@ -1,0 +1,33 @@
+# verifier.yml -- lives with the VERIFIER, never in the target repo,
+# so the agent can't rewrite its own rules.
+
+# Commit-separation contract
+test_paths:
+  - tests/
+src_paths:
+  - src/
+
+# Paths neither commit may touch. conftest.py is protected because it
+# controls pytest's import machinery; CI config because it IS the verifier.
+protected_paths:
+  - .buildkite/
+  - verifier/
+  - conftest.py
+  - pyproject.toml
+  - requirements.txt
+
+# Execution
+pytest_cmd: [python3, -m, pytest]
+suite_target: tests
+timeout_s: 300
+
+# Known-flaky tests seeded before the event. One retry each; everything
+# else is deterministic -- a failure is a failure.
+flaky_quarantine: []
+
+# Held-back metamorphic probes, keyed by issue id: holdback/<issue>/test_*.py
+holdback_root: holdback
+
+# Literal scan is advisory by default (highest false-positive risk).
+# Flip to true to gate on it.
+literal_scan_blocking: false
