@@ -35,5 +35,5 @@ Expected: good-fix → verified · gamed-fix → suspected_overfit · lazy-fix �
     uvicorn service.app:app --port 8080
 
 Frozen contracts (do not change without telling everyone):
-`POST /fix {repo, issue}` → `{job_id}` · `GET /job/{id}` → status/verdict/pr_url
+`POST /fix {repo, issue}` → `{job_id}` · `GET /job/{id}` → status/verdict/pr_url/issue_closed
 · agent branch shape `base → test_commit → fix_commit`.

@@ -47,6 +47,8 @@ def test_run_job_reaches_verified_pr(monkeypatch, tmp_path):
         lambda target, result, issue: {"verdict": "verified", "issue": issue, "reason_codes": []},
     )
     monkeypatch.setattr(service, "open_pr", lambda *args: "https://github.com/acme/widget/pull/1")
+    closed = []
+    monkeypatch.setattr(service, "close_issue", lambda *args: closed.append(args))
 
     service.JOBS["abc"] = {
         "status": "running",
@@ -54,6 +56,7 @@ def test_run_job_reaches_verified_pr(monkeypatch, tmp_path):
         "issue": 7,
         "verdict": None,
         "pr_url": None,
+        "issue_closed": False,
         "branch": None,
         "attempt": 1,
         "stage": "queued",
@@ -64,6 +67,8 @@ def test_run_job_reaches_verified_pr(monkeypatch, tmp_path):
     assert service.JOBS["abc"]["stage"] == "finished"
     assert service.JOBS["abc"]["branch"] == "fixloop/issue-7"
     assert service.JOBS["abc"]["pr_url"].endswith("/pull/1")
+    assert service.JOBS["abc"]["issue_closed"] is True
+    assert closed[0][2:] == (7, "https://github.com/acme/widget/pull/1")
 
 
 def test_open_pr_requires_token(monkeypatch, tmp_path):
@@ -71,6 +76,22 @@ def test_open_pr_requires_token(monkeypatch, tmp_path):
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     with pytest.raises(RuntimeError, match="GH_TOKEN"):
         service.open_pr(tmp_path, "https://github.com/acme/widget", "fixloop/issue-1", "main", {})
+
+
+def test_close_issue_marks_github_issue_completed(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.setattr(service, "_run", lambda command, cwd=None, timeout=120: calls.append((command, cwd)))
+    service.close_issue(
+        tmp_path,
+        "https://github.com/acme/widget",
+        42,
+        "https://github.com/acme/widget/pull/9",
+    )
+    command, cwd = calls[0]
+    assert command[:4] == ["gh", "issue", "close", "42"]
+    assert command[command.index("--repo") + 1] == "acme/widget"
+    assert "pull/9" in command[command.index("--comment") + 1]
+    assert cwd == tmp_path
 
 
 def test_verifier_config_uses_profile_roots(monkeypatch, tmp_path):
