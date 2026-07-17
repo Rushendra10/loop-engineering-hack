@@ -68,6 +68,7 @@ def create_fix(req: FixRequest):
         "issue": req.issue,
         "verdict": None,
         "pr_url": None,
+        "issue_closed": False,
         "branch": None,
         "attempt": 1,
         "stage": "queued",
@@ -170,6 +171,9 @@ def run_job(job_id: str):
         if verdict.get("verdict") == "verified":
             job["stage"] = "pr"
             job["pr_url"] = open_pr(target, job["repo"], branch, base_branch, verdict)
+            job["stage"] = "close-issue"
+            close_issue(target, job["repo"], job["issue"], job["pr_url"])
+            job["issue_closed"] = True
         job["status"] = "done"
     except Exception as exc:  # concise by design for a hackathon service
         job["status"] = "done"
@@ -365,3 +369,21 @@ def open_pr(target: Path, repo: str, branch: str, base_branch: str, verdict: dic
         target,
         timeout=120,
     ).splitlines()[-1]
+
+
+def close_issue(target: Path, repo: str, issue: int, pr_url: str) -> None:
+    """Close a successfully fixed issue so it leaves GitHub's Open view."""
+    _run(
+        [
+            "gh",
+            "issue",
+            "close",
+            str(issue),
+            "--repo",
+            repo_slug(repo),
+            "--comment",
+            f"Resolved by verified Fixloop PR: {pr_url}",
+        ],
+        target,
+        timeout=120,
+    )
