@@ -31,7 +31,7 @@ def console_styles() -> FileResponse:
     return FileResponse(
         STATIC_DIR / "fixloop.css",
         media_type="text/css",
-        headers={"Cache-Control": "public, max-age=3600"},
+        headers={"Cache-Control": "no-store"},
     )
 
 
@@ -40,5 +40,5 @@ def console_script() -> FileResponse:
     return FileResponse(
         STATIC_DIR / "fixloop.js",
         media_type="text/javascript",
-        headers={"Cache-Control": "public, max-age=3600"},
+        headers={"Cache-Control": "no-store"},
     )

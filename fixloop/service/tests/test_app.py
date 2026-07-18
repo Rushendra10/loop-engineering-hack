@@ -28,7 +28,7 @@ def test_run_job_reaches_verified_pr(monkeypatch, tmp_path):
             return "main"
         raise AssertionError(command)
 
-    def fake_agent(target, issue, issue_text, reason_codes=None, deadline_s=900):
+    def fake_agent(target, issue, issue_text, reason_codes=None, deadline_s=900, model="auto"):
         result = {
             "base_sha": "base",
             "test_sha": "test",
@@ -60,6 +60,13 @@ def test_run_job_reaches_verified_pr(monkeypatch, tmp_path):
         "branch": None,
         "attempt": 1,
         "stage": "queued",
+        "events": [],
+        "settings": {
+            "model": "auto",
+            "deadline_s": 900,
+            "retry_on_rejection": True,
+            "close_issue": True,
+        },
     }
     service.run_job("abc")
 
@@ -69,6 +76,18 @@ def test_run_job_reaches_verified_pr(monkeypatch, tmp_path):
     assert service.JOBS["abc"]["pr_url"].endswith("/pull/1")
     assert service.JOBS["abc"]["issue_closed"] is True
     assert closed[0][2:] == (7, "https://github.com/acme/widget/pull/1")
+    messages = [event["message"] for event in service.JOBS["abc"]["events"]]
+    assert any("Provisioning isolated workspace" in message for message in messages)
+    assert any("Run complete" in message for message in messages)
+    assert service.JOBS["abc"]["profile"]["source_roots"] == ["src"]
+
+
+def test_system_status_contains_no_secrets():
+    status = service.system_status()
+    assert status["runtime"]
+    assert status["verifier"] in {"local", "buildkite"}
+    assert "commit_contract" in status
+    assert all("token" not in key.casefold() and "secret" not in key.casefold() for key in status)
 
 
 def test_open_pr_requires_token(monkeypatch, tmp_path):
