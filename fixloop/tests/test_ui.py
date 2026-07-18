@@ -26,14 +26,16 @@ def test_console_and_assets_are_served() -> None:
     assert page.status_code == 200
     assert page.headers["content-type"].startswith("text/html")
     assert page.headers["cache-control"] == "no-store"
-    assert "The agent proposes" in page.text
-    assert "ORCHESTRATION STREAM" in page.text
+    assert "Fix GitHub issues" in page.text
+    assert "Live activity" in page.text
+    assert 'class="workflow-summary"' in page.text
+    assert 'content="#f6f7f9"' in page.text
     assert "x402 admission" in page.text
     assert "Buildkite proof" in page.text
     assert 'class="infra-pulse"' in page.text
     assert 'id="model-input"' in page.text
     assert 'id="event-log"' in page.text
-    assert "COMMIT CONTRACT" in page.text
+    assert "Commit structure" in page.text
     assert 'href="/assets/fixloop.css"' in page.text
     assert 'src="/assets/fixloop.js"' in page.text
 
@@ -42,6 +44,8 @@ def test_console_and_assets_are_served() -> None:
     assert stylesheet.headers["content-type"].startswith("text/css")
     assert stylesheet.headers["cache-control"] == "no-store"
     assert "--verified:" in stylesheet.text
+    assert "Light product theme" in stylesheet.text
+    assert "color-scheme: light" in stylesheet.text
 
     script = client.get("/assets/fixloop.js")
     assert script.status_code == 200

@@ -218,7 +218,7 @@
       else if (index === currentIndex) item.classList.add("active");
     });
     const stageText = typeof rawStage === "string" && rawStage.trim() ? rawStage.trim() : "awaiting signal";
-    $("stage-description").textContent = failed ? "Execution stopped · inspect terminal" : `PHASE / ${stageText.toUpperCase()}`;
+    $("stage-description").textContent = failed ? "Execution stopped · inspect activity" : `Phase: ${stageText.replace(/[-_]/g, " ")}`;
   }
 
   function renderEvents(job) {
@@ -288,15 +288,15 @@
     const lifecycleState = $("issue-lifecycle-state");
     const lifecycleCopy = $("issue-lifecycle-copy");
     if (job.issue_closed) {
-      lifecycleState.textContent = "RESOLVED";
+      lifecycleState.textContent = "Resolved";
       lifecycleState.className = "resolved";
       lifecycleCopy.textContent = "Verified PR published. Source issue removed from the Open Issues view.";
     } else if (job.pr_url) {
-      lifecycleState.textContent = "PR OPEN";
+      lifecycleState.textContent = "PR open";
       lifecycleState.className = "published";
       lifecycleCopy.textContent = "Verified pull request published; issue lifecycle action pending.";
     } else {
-      lifecycleState.textContent = "OPEN";
+      lifecycleState.textContent = "Open";
       lifecycleState.className = "";
       lifecycleCopy.textContent = settings.close_issue === false
         ? "Automatic issue resolution disabled for this run."
@@ -307,7 +307,7 @@
   function resetTelemetry() {
     ["commit-base", "commit-test", "commit-fix"].forEach((id, index) => { $(id).textContent = index ? "pending" : "•••••••"; });
     $("runtime-languages").textContent = "profiling…";
-    $("issue-lifecycle-state").textContent = "OPEN";
+    $("issue-lifecycle-state").textContent = "Open";
     $("issue-lifecycle-state").className = "";
     $("issue-lifecycle-copy").textContent = "Close only after a verified pull request is published.";
   }
@@ -318,16 +318,17 @@
     const x402 = infrastructure.x402 && typeof infrastructure.x402 === "object" ? infrastructure.x402 : {};
     const buildkite = infrastructure.buildkite && typeof infrastructure.buildkite === "object" ? infrastructure.buildkite : {};
 
-    $("infra-akash-status").textContent = String(akash.status || "connected").toUpperCase();
+    const displayStatus = (value) => String(value || "").replace(/\b\w/g, (letter) => letter.toUpperCase());
+    $("infra-akash-status").textContent = displayStatus(akash.status || "connected");
     $("infra-akash-detail").textContent = akash.deployment || akash.label || "managed lease";
-    $("infra-x402-status").textContent = String(x402.status || "demo bypass").toUpperCase();
+    $("infra-x402-status").textContent = displayStatus(x402.status || "demo bypass");
     $("infra-x402-detail").textContent = `${x402.network || "Base"} · $${x402.price || "0.01"} USDC`;
-    $("infra-buildkite-status").textContent = String(buildkite.status || "standby").toUpperCase();
+    $("infra-buildkite-status").textContent = displayStatus(buildkite.status || "standby");
     $("infra-buildkite-detail").textContent = `${buildkite.pipeline || "fixloop-verifier"} · ${buildkite.mode || systemMetadata.verifier || "local"}`;
 
-    $("masthead-x402").textContent = x402.status === "enforced" ? "ENFORCED" : "BYPASS";
-    $("masthead-akash").textContent = akash.status === "connected" ? "LEASED" : String(akash.status || "LIVE").toUpperCase();
-    $("masthead-buildkite").textContent = buildkite.status === "online" ? "ONLINE" : "STANDBY";
+    $("masthead-x402").textContent = x402.status === "enforced" ? "Enforced" : "Demo";
+    $("masthead-akash").textContent = akash.status === "connected" ? "Connected" : displayStatus(akash.status || "Live");
+    $("masthead-buildkite").textContent = buildkite.status === "online" ? "Online" : "Standby";
     $("runtime-payment").textContent = `x402 · ${x402.status || "configured"}`;
     $("runtime-pipeline").textContent = buildkite.pipeline || "fixloop-verifier";
   }

@@ -3,66 +3,63 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#050914">
+    <meta name="theme-color" content="#f6f7f9">
     <title>fixloop — autonomous repair control plane</title>
     <meta name="description" content="Submit a GitHub issue and watch Fixloop reproduce, repair, and independently verify it.">
     <link rel="stylesheet" href="/assets/fixloop.css">
     <script src="/assets/fixloop.js" defer></script>
   </head>
   <body>
-    <div class="ambient-grid" aria-hidden="true"></div>
-    <div class="scanline" aria-hidden="true"></div>
     <a class="skip-link" href="#workspace">Skip to console</a>
 
     <header class="masthead">
       <a class="wordmark" href="/" aria-label="Fixloop home">
         <span class="wordmark-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span>fixloop</span><sup>LABS</sup>
+        <span>fixloop</span><sup>BETA</sup>
       </a>
       <div class="system-pills" aria-label="System status">
-        <span><i class="status-dot acid"></i>X402 <b id="masthead-x402">GATE</b></span>
-        <span><i class="status-dot green"></i>AKASH <b id="masthead-akash">LEASED</b></span>
-        <span><i class="status-dot cyan"></i>CURSOR <b>ARMED</b></span>
-        <span><i class="status-dot violet"></i>BUILDKITE <b id="masthead-buildkite">READY</b></span>
+        <span><i class="status-dot acid"></i>x402 <b id="masthead-x402">Gate</b></span>
+        <span><i class="status-dot green"></i>Akash <b id="masthead-akash">Connected</b></span>
+        <span><i class="status-dot cyan"></i>Cursor <b>Ready</b></span>
+        <span><i class="status-dot violet"></i>Buildkite <b id="masthead-buildkite">Ready</b></span>
       </div>
     </header>
 
     <main id="workspace">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy-block">
-          <p class="eyebrow">AUTONOMOUS REPAIR · ADVERSARIAL PROOF</p>
-          <h1 id="hero-title">The agent proposes.<br><em>The evidence decides.</em></h1>
+          <p class="eyebrow">Automated issue repair</p>
+          <h1 id="hero-title">Fix GitHub issues with a <em>verifiable workflow.</em></h1>
           <p class="hero-copy">
-            Point Fixloop at a public GitHub issue. An isolated coding agent writes the
-            regression first, repairs the root cause, and earns a pull request only
-            after an independent verifier attacks the result.
+            Give Fixloop a public repository and issue. It writes a regression test,
+            fixes the root cause, runs an independent verification step, and opens a
+            pull request with the evidence attached.
           </p>
           <div class="hero-metrics" aria-label="Fixloop guarantees">
-            <span><strong>02</strong> deterministic commits</span>
-            <span><strong>01</strong> verifier-informed retry</span>
-            <span><strong>00</strong> trust in agent claims</span>
+            <span><strong>2</strong> separated commits</span>
+            <span><strong>1</strong> verifier-guided retry</span>
+            <span><strong>15m</strong> maximum runtime</span>
           </div>
         </div>
 
-        <div class="loop-reactor" aria-label="Fixloop execution architecture">
-          <div class="reactor-orbit orbit-one"></div>
-          <div class="reactor-orbit orbit-two"></div>
-          <div class="reactor-core"><span>FIX</span><b>LOOP</b><i></i></div>
-          <div class="reactor-node node-repo"><small>01</small><strong>REPO</strong></div>
-          <div class="reactor-node node-agent"><small>02</small><strong>AGENT</strong></div>
-          <div class="reactor-node node-proof"><small>03</small><strong>PROOF</strong></div>
-          <div class="reactor-caption"><i></i> CONTROL PLANE READY</div>
-        </div>
+        <aside class="workflow-summary" aria-label="Fixloop execution workflow">
+          <header><span>What happens after launch</span><i>Usually 5–10 min</i></header>
+          <ol>
+            <li><b>1</b><p><strong>Reproduce</strong><small>Clone the repo and add a failing regression test.</small></p></li>
+            <li><b>2</b><p><strong>Repair</strong><small>Ask Cursor for the smallest source-only fix.</small></p></li>
+            <li><b>3</b><p><strong>Verify</strong><small>Run the test suite and independent Buildkite checks.</small></p></li>
+            <li><b>4</b><p><strong>Publish</strong><small>Open a pull request and resolve the issue.</small></p></li>
+          </ol>
+        </aside>
       </section>
 
       <section class="command-deck" aria-labelledby="start-title">
-        <div class="corner-label">RUN / NEW</div>
         <div class="deck-heading">
           <div>
-            <p class="section-kicker">MISSION INPUT</p>
-            <h2 id="start-title">Put an issue on trial</h2>
+            <p class="section-kicker">New repair</p>
+            <h2 id="start-title">Choose an issue to fix</h2>
           </div>
-          <span class="deck-status">PUBLIC GITHUB REPOS</span>
+          <span class="deck-status">Public GitHub repositories</span>
         </div>
 
         <form id="fix-form" class="fix-form" novalidate>
@@ -83,7 +80,7 @@
           </button>
 
           <details class="advanced-settings">
-            <summary><span>Advanced mission settings</span><small>Model, deadline, retry, issue lifecycle</small></summary>
+            <summary><span>Advanced settings</span><small>Model, deadline, retry, and issue lifecycle</small></summary>
             <div class="settings-grid">
               <label class="field">
                 <span>Cursor model</span>
@@ -144,7 +141,7 @@
       <section id="run-console" class="run-console" aria-labelledby="run-heading" hidden>
         <div class="run-header">
           <div>
-            <p class="section-kicker">LIVE EXECUTION</p>
+            <p class="section-kicker">Live run</p>
             <h2 id="run-heading">Verification in progress</h2>
             <p id="run-target" class="run-target">Waiting for repository metadata…</p>
           </div>
@@ -155,26 +152,26 @@
           <li data-stage="queued"><span class="stage-node"><b>01</b></span><span class="stage-copy"><strong>Queue</strong><small>slot reserved</small></span></li>
           <li data-stage="clone"><span class="stage-node"><b>02</b></span><span class="stage-copy"><strong>Isolate</strong><small>clone + profile</small></span></li>
           <li data-stage="agent"><span class="stage-node"><b>03</b></span><span class="stage-copy"><strong>Repair</strong><small>test → fix</small></span></li>
-          <li data-stage="verify"><span class="stage-node"><b>04</b></span><span class="stage-copy"><strong>Attack</strong><small>hidden evidence</small></span></li>
+          <li data-stage="verify"><span class="stage-node"><b>04</b></span><span class="stage-copy"><strong>Verify</strong><small>independent checks</small></span></li>
           <li data-stage="pr"><span class="stage-node"><b>05</b></span><span class="stage-copy"><strong>Publish</strong><small>PR + resolve</small></span></li>
-          <li data-stage="finished"><span class="stage-node"><b>06</b></span><span class="stage-copy"><strong>Seal</strong><small>artifacts ready</small></span></li>
+          <li data-stage="finished"><span class="stage-node"><b>06</b></span><span class="stage-copy"><strong>Complete</strong><small>artifacts ready</small></span></li>
         </ol>
 
         <section class="infra-pulse" aria-label="Infrastructure status">
           <article data-infra="x402">
             <div class="infra-mark"><i></i><span>x402</span></div>
-            <p><strong>ADMISSION GATE</strong><small id="infra-x402-detail">Base · $0.01 USDC</small></p>
-            <code id="infra-x402-status">DEMO BYPASS</code>
+            <p><strong>Admission gate</strong><small id="infra-x402-detail">Base · $0.01 USDC</small></p>
+            <code id="infra-x402-status">Demo bypass</code>
           </article>
           <article data-infra="akash">
             <div class="infra-mark"><i></i><span>AKASH</span></div>
-            <p><strong>COMPUTE LEASE</strong><small id="infra-akash-detail">managed lease</small></p>
-            <code id="infra-akash-status">CONNECTED</code>
+            <p><strong>Compute lease</strong><small id="infra-akash-detail">managed lease</small></p>
+            <code id="infra-akash-status">Connected</code>
           </article>
           <article data-infra="buildkite">
             <div class="infra-mark"><i></i><span>BK</span></div>
-            <p><strong>ADVERSARIAL PROOF</strong><small id="infra-buildkite-detail">fixloop-verifier</small></p>
-            <code id="infra-buildkite-status">STANDBY</code>
+            <p><strong>Independent verification</strong><small id="infra-buildkite-detail">fixloop-verifier</small></p>
+            <code id="infra-buildkite-status">Standby</code>
           </article>
         </section>
 
@@ -182,7 +179,7 @@
           <section class="terminal-panel" aria-labelledby="terminal-title">
             <header>
               <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-              <span id="terminal-title">ORCHESTRATION STREAM</span>
+              <span id="terminal-title">Live activity</span>
               <div class="source-legend" aria-label="Event sources">
                 <i class="source-akash">AKASH</i><i class="source-x402">X402</i><i class="source-buildkite">BK</i>
               </div>
@@ -195,7 +192,7 @@
 
           <aside class="telemetry-stack">
             <section class="telemetry-card runtime-card">
-              <header><span>RUNTIME MATRIX</span><i class="status-dot green"></i></header>
+              <header><span>Run details</span><i class="status-dot green"></i></header>
               <dl>
                 <div><dt>Provider</dt><dd id="runtime-provider">Akash dCloud</dd></div>
                 <div><dt>Payment</dt><dd id="runtime-payment">x402 · loading</dd></div>
@@ -208,7 +205,7 @@
             </section>
 
             <section class="telemetry-card commit-card">
-              <header><span>COMMIT CONTRACT</span><small>LINEAR</small></header>
+              <header><span>Commit structure</span><small>Linear</small></header>
               <div class="mini-graph">
                 <div><i></i><span>BASE</span><code id="commit-base">•••••••</code></div>
                 <b></b>
@@ -219,7 +216,7 @@
             </section>
 
             <section class="telemetry-card lifecycle-card">
-              <header><span>ISSUE LIFECYCLE</span><small id="issue-lifecycle-state">OPEN</small></header>
+              <header><span>Issue status</span><small id="issue-lifecycle-state">Open</small></header>
               <div class="lifecycle-track"><i></i><i></i><i></i></div>
               <p id="issue-lifecycle-copy">Close only after a verified pull request is published.</p>
             </section>
@@ -237,7 +234,7 @@
         <section id="verdict-panel" class="verdict-panel" aria-labelledby="verdict-title" hidden>
           <div class="verdict-lead">
             <span id="verdict-sigil" class="verdict-sigil" aria-hidden="true"></span>
-            <div><p class="section-kicker">VERIFIER VERDICT</p><h2 id="verdict-title">Awaiting evidence</h2><p id="verdict-summary"></p></div>
+            <div><p class="section-kicker">Verification result</p><h2 id="verdict-title">Awaiting evidence</h2><p id="verdict-summary"></p></div>
             <div id="verdict-duration" class="verdict-duration" hidden><span>DURATION</span><strong>—</strong></div>
           </div>
           <div id="reason-section" class="evidence-section" hidden><h3>Reason codes</h3><div id="reason-codes" class="reason-codes"></div></div>
@@ -251,6 +248,6 @@
       </section>
     </main>
 
-    <footer><p>Proof, not promises.</p><span>x402 admission · Akash compute · Cursor repair · Buildkite proof</span></footer>
+    <footer><p>fixloop</p><span>x402 payments · Akash compute · Cursor repair · Buildkite verification</span></footer>
   </body>
 </html>
