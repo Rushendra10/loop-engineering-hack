@@ -17,6 +17,7 @@ protected_paths:
   - requirements.txt
 
 # Execution
+test_framework: pytest
 pytest_cmd: [python3, -m, pytest]
 suite_target: tests
 timeout_s: 300

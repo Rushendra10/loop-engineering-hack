@@ -1,0 +1,14 @@
+# Minimal verifier policy for dependency-free Node.js repositories.
+test_paths:
+  - tests/
+src_paths:
+  - src/
+protected_paths:
+  - package.json
+  - package-lock.json
+test_framework: node
+node_test_cmd: [node, --test, --test-reporter=junit]
+suite_target: tests
+timeout_s: 300
+flaky_quarantine: []
+literal_scan_blocking: false

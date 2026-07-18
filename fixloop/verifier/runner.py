@@ -29,6 +29,33 @@ def run_pytest(cwd, targets, cfg, extra=None):
     return proc.returncode, results, proc.stdout[-2000:]
 
 
+def run_node_test(cwd, targets, cfg, extra=None):
+    """Run Node's built-in test runner and parse its JUnit reporter."""
+    cmd = cfg.get("node_test_cmd", ["node", "--test", "--test-reporter=junit"])
+    cmd = cmd + (extra or []) + [str(t) for t in targets]
+    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                          timeout=cfg.get("timeout_s", 300))
+    junit = Path(tempfile.mkstemp(suffix=".xml")[1])
+    try:
+        junit.write_text(proc.stdout)
+        results = parse_junit(junit)
+    finally:
+        junit.unlink(missing_ok=True)
+
+    # Node reports syntax/import crashes as failed testcases too. Require an
+    # assertion signature so a broken test harness cannot satisfy fail-on-base.
+    if proc.returncode and "ERR_ASSERTION" not in proc.stdout and "AssertionError" not in proc.stdout:
+        results = {test_id: "error" if status == "failed" else status
+                   for test_id, status in results.items()}
+    return proc.returncode, results, (proc.stdout + proc.stderr)[-2000:]
+
+
+def run_tests(cwd, targets, cfg, extra=None):
+    if cfg.get("test_framework", "pytest") == "node":
+        return run_node_test(cwd, targets, cfg, extra)
+    return run_pytest(cwd, targets, cfg, extra)
+
+
 def parse_junit(path):
     """-> {test_id: 'passed'|'failed'|'error'|'skipped'}"""
     out = {}
@@ -51,7 +78,7 @@ def parse_junit(path):
 def expect_fail(worktree, new_tests, cfg):
     """Stage 2: at base+test, the new test must fail its assertion.
     Proves the test actually captures the reported bug."""
-    rc, results, tail = run_pytest(worktree, new_tests, cfg)
+    rc, results, tail = run_tests(worktree, new_tests, cfg)
     if not results:
         return {"ok": False, "code": "NEW_TEST_NOT_DISCOVERED", "results": results,
                 "log_tail": tail}
@@ -71,7 +98,7 @@ def expect_pass_twice(worktree, new_tests, cfg):
     A flaky regression test is a liability merged into someone's repo."""
     runs = []
     for i in (1, 2):
-        rc, results, tail = run_pytest(worktree, new_tests, cfg)
+        rc, results, tail = run_tests(worktree, new_tests, cfg)
         runs.append(results)
         bad = [t for t, v in results.items() if v != "passed"]
         if bad:
@@ -87,15 +114,21 @@ def suite_compare(wt_base, wt_fix, cfg):
     retry; everything else is deterministic."""
     quarantine = set(cfg.get("flaky_quarantine", []))
     suite_target = cfg.get("suite_target", "tests")
+    # `node --test` discovers the repository suite when no file arguments are
+    # supplied. A bare `tests` argument is interpreted as a module filename.
+    suite_targets = [] if cfg.get("test_framework") == "node" else [suite_target]
 
-    _, base_r, _ = run_pytest(wt_base, [suite_target], cfg)
-    _, fix_r, _ = run_pytest(wt_fix, [suite_target], cfg)
+    _, base_r, _ = run_tests(wt_base, suite_targets, cfg)
+    _, fix_r, _ = run_tests(wt_fix, suite_targets, cfg)
 
     regressions, retried = [], []
     for tid, status in fix_r.items():
         if status in ("failed", "error") and base_r.get(tid) == "passed":
             if tid in quarantine:
-                _, retry, _ = run_pytest(wt_fix, [suite_target], cfg, extra=["-k", tid.split("::")[-1]])
+                extra = (["--test-name-pattern", tid.split("::")[-1]]
+                         if cfg.get("test_framework") == "node"
+                         else ["-k", tid.split("::")[-1]])
+                _, retry, _ = run_tests(wt_fix, suite_targets, cfg, extra=extra)
                 retried.append(tid)
                 if all(v == "passed" for v in retry.values()):
                     continue
@@ -118,9 +151,9 @@ def run_holdback(wt_fix, holdback_dir, cfg):
     probe_dir = Path(wt_fix) / ".holdback_probe"
     probe_dir.mkdir(exist_ok=True)
     try:
-        for f in Path(holdback_dir).glob("test_*.py"):
+        for f in Path(holdback_dir).glob("test_*.*"):
             shutil.copy(f, probe_dir / f.name)
-        rc, results, tail = run_pytest(wt_fix, [probe_dir], cfg)
+        rc, results, tail = run_tests(wt_fix, [probe_dir], cfg)
         failing = sorted(t for t, v in results.items() if v != "passed")
         return {"ok": not failing and bool(results), "total": len(results),
                 "failing": failing}
