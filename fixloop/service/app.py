@@ -68,29 +68,71 @@ def health():
 @app.get("/system")
 def system_status():
     """Safe, non-secret runtime metadata for the demo console."""
+    x402_enabled = os.environ.get("X402_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    buildkite_ready = bool(BUILDKITE_API_TOKEN and BUILDKITE_ORG and BUILDKITE_PIPELINE)
     return {
         "runtime": os.environ.get("FIXLOOP_RUNTIME_NAME", "Akash dCloud"),
         "verifier": VERIFIER_MODE,
         "default_model": os.environ.get("FIXLOOP_CURSOR_MODEL", "auto"),
         "job_deadline_s": JOB_DEADLINE_S,
         "commit_contract": "base → regression test → source fix",
+        "infrastructure": {
+            "akash": {
+                "status": "connected",
+                "label": os.environ.get("FIXLOOP_RUNTIME_NAME", "Akash dCloud"),
+                "deployment": os.environ.get("AKASH_DSEQ", "managed lease"),
+            },
+            "x402": {
+                "status": "enforced" if x402_enabled else "demo bypass",
+                "network": os.environ.get("X402_NETWORK", "eip155:84532"),
+                "price": os.environ.get("FIXLOOP_PRICE_USDC", "0.01"),
+            },
+            "buildkite": {
+                "status": "online" if buildkite_ready else "standby",
+                "pipeline": BUILDKITE_PIPELINE or "fixloop-verifier",
+                "mode": VERIFIER_MODE,
+            },
+        },
     }
 
 
-def _event(job: dict, message: str, *, stage: str | None = None, level: str = "info") -> None:
+EVENT_SOURCES = {
+    "queued": "orchestrator",
+    "clone": "akash",
+    "issue": "github",
+    "agent": "cursor",
+    "agent-retry": "cursor",
+    "verify": "buildkite" if VERIFIER_MODE == "buildkite" else "verifier",
+    "verify-retry": "buildkite" if VERIFIER_MODE == "buildkite" else "verifier",
+    "pr": "github",
+    "close-issue": "github",
+    "finished": "orchestrator",
+}
+
+
+def _event(
+    job: dict,
+    message: str,
+    *,
+    stage: str | None = None,
+    level: str = "info",
+    source: str | None = None,
+) -> None:
+    event_stage = stage or job.get("stage", "queued")
     job.setdefault("events", []).append(
         {
             "at": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
-            "stage": stage or job.get("stage", "queued"),
+            "stage": event_stage,
+            "source": source or EVENT_SOURCES.get(event_stage, "orchestrator"),
             "level": level,
             "message": message,
         }
     )
 
 
-def _set_stage(job: dict, stage: str, message: str) -> None:
+def _set_stage(job: dict, stage: str, message: str, *, source: str | None = None) -> None:
     job["stage"] = stage
-    _event(job, message, stage=stage)
+    _event(job, message, stage=stage, source=source)
 
 
 @app.post("/fix")
@@ -117,7 +159,14 @@ def create_fix(req: FixRequest):
             "verifier": VERIFIER_MODE,
         },
     }
-    _event(JOBS[job_id], "Control plane accepted the issue and reserved a worker slot")
+    payment_enabled = os.environ.get("X402_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    _event(
+        JOBS[job_id],
+        "x402 payment proof accepted; execution authorized" if payment_enabled else "x402 gate running in demo bypass mode",
+        source="x402",
+        level="success" if payment_enabled else "system",
+    )
+    _event(JOBS[job_id], "Control plane accepted the issue and reserved an Akash worker slot", source="akash")
     threading.Thread(target=run_job, args=(job_id,), daemon=True).start()
     return {"job_id": job_id}
 
@@ -182,17 +231,17 @@ def run_job(job_id: str):
     deadline_s = int(settings.get("deadline_s", JOB_DEADLINE_S))
     workdir.mkdir(parents=True, exist_ok=True)
     try:
-        _set_stage(job, "clone", "Provisioning isolated workspace on the Akash worker")
-        _event(job, f"Cloning {job['repo']} into an ephemeral job directory")
+        _set_stage(job, "clone", "Akash lease attached; provisioning an isolated workspace", source="akash")
+        _event(job, f"Cloning {job['repo']} into an ephemeral job directory", source="akash")
         _run(["git", "clone", "--quiet", job["repo"], str(target)], timeout=180)
         base_branch = _default_branch(target)
-        _event(job, f"Repository cloned · base branch {base_branch}")
+        _event(job, f"Repository cloned · base branch {base_branch}", source="akash", level="success")
 
-        _set_stage(job, "issue", f"Fetching GitHub issue #{job['issue']}")
+        _set_stage(job, "issue", f"Fetching GitHub issue #{job['issue']}", source="github")
         issue_text = fetch_issue_text(job["repo"], job["issue"])
-        _event(job, "Issue context loaded; secrets and credentials excluded from the prompt")
+        _event(job, "Issue context loaded; secrets and credentials excluded from the prompt", source="github", level="success")
 
-        _set_stage(job, "agent", f"Launching Cursor model {settings.get('model', 'auto')} for test-first repair")
+        _set_stage(job, "agent", f"Launching Cursor model {settings.get('model', 'auto')} for test-first repair", source="cursor")
         branch = run_agent(
             target,
             job["issue"],
@@ -209,20 +258,22 @@ def run_job(job_id: str):
             "fix": result.get("fix_sha"),
         }
         languages = ", ".join((result.get("profile") or {}).get("languages") or []) or "unknown"
-        _event(job, f"Regression test failed on base and fix passed locally · {languages}")
-        _event(job, f"Two-commit branch sealed: {branch}")
+        _event(job, f"Regression test failed on base and fix passed locally · {languages}", source="cursor", level="success")
+        _event(job, f"Two-commit branch sealed: {branch}", source="cursor", level="success")
 
-        _set_stage(job, "verify", f"Sending commits to the {VERIFIER_MODE} adversarial verifier")
+        verifier_source = "buildkite" if VERIFIER_MODE == "buildkite" else "verifier"
+        verifier_name = "Buildkite adversarial pipeline" if VERIFIER_MODE == "buildkite" else "local adversarial verifier"
+        _set_stage(job, "verify", f"Sending commits to the {verifier_name}", source=verifier_source)
         verdict = run_verifier(target, result, f"issue-{job['issue']}")
         job["verdict"] = verdict
-        _event(job, f"Verifier returned {verdict.get('verdict', 'unknown')}", level="success" if verdict.get("verdict") == "verified" else "warn")
+        _event(job, f"Verifier returned {verdict.get('verdict', 'unknown')}", source=verifier_source, level="success" if verdict.get("verdict") == "verified" else "warn")
 
         reason_codes = verdict.get("reason_codes") or []
         remaining = deadline_s - (time.monotonic() - started)
         retry_enabled = bool(settings.get("retry_on_rejection", True))
         if verdict.get("verdict") != "verified" and reason_codes and retry_enabled and remaining > 30:
             job["attempt"] = 2
-            _set_stage(job, "agent-retry", f"Retrying once with verifier evidence: {', '.join(reason_codes)}")
+            _set_stage(job, "agent-retry", f"Retrying once with verifier evidence: {', '.join(reason_codes)}", source="cursor")
             branch = run_agent(
                 target,
                 job["issue"],
@@ -238,20 +289,20 @@ def run_job(job_id: str):
                 "test": result.get("test_sha"),
                 "fix": result.get("fix_sha"),
             }
-            _set_stage(job, "verify-retry", "Re-running the adversarial verifier on attempt two")
+            _set_stage(job, "verify-retry", "Re-running the adversarial verifier on attempt two", source=verifier_source)
             verdict = run_verifier(target, result, f"issue-{job['issue']}")
             job["verdict"] = verdict
-            _event(job, f"Retry verdict: {verdict.get('verdict', 'unknown')}", level="success" if verdict.get("verdict") == "verified" else "error")
+            _event(job, f"Retry verdict: {verdict.get('verdict', 'unknown')}", source=verifier_source, level="success" if verdict.get("verdict") == "verified" else "error")
 
         if verdict.get("verdict") == "verified":
-            _set_stage(job, "pr", "Pushing the deterministic branch and opening a verified pull request")
+            _set_stage(job, "pr", "Pushing the deterministic branch and opening a verified pull request", source="github")
             job["pr_url"] = open_pr(target, job["repo"], branch, base_branch, verdict)
-            _event(job, f"Pull request opened: {job['pr_url']}", level="success")
+            _event(job, f"Pull request opened: {job['pr_url']}", source="github", level="success")
             if settings.get("close_issue", True):
-                _set_stage(job, "close-issue", "Closing the resolved GitHub issue")
+                _set_stage(job, "close-issue", "Closing the resolved GitHub issue", source="github")
                 close_issue(target, job["repo"], job["issue"], job["pr_url"])
                 job["issue_closed"] = True
-                _event(job, "Source issue marked resolved and removed from the Open Issues view", level="success")
+                _event(job, "Source issue marked resolved and removed from the Open Issues view", source="github", level="success")
         job["status"] = "done"
         _event(job, "Run complete · evidence and artifacts are ready", stage="finished", level="success")
     except Exception as exc:  # concise by design for a hackathon service

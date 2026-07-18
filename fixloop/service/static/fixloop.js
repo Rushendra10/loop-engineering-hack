@@ -18,6 +18,11 @@
     pr: "Publishing verified branch and resolving the source issue",
     finished: "Execution sealed; artifacts are ready",
   };
+  const SOURCE_BY_STAGE = {
+    queued: "orchestrator", clone: "akash", agent: "cursor",
+    verify: "buildkite", pr: "github", finished: "orchestrator",
+  };
+  const EVENT_SOURCES = new Set(["akash", "x402", "cursor", "buildkite", "github", "verifier", "orchestrator"]);
 
   const $ = (id) => document.getElementById(id);
   const fixForm = $("fix-form");
@@ -147,7 +152,7 @@
     resetTelemetry();
     setLiveState(true);
     updateStages("queued", {}, false);
-    appendTerminalEvent({ stage: "queued", level: "system", message: "Telemetry channel attached" });
+    appendTerminalEvent({ stage: "queued", source: "orchestrator", level: "system", message: "Telemetry channel attached" });
     runConsole.scrollIntoView({ behavior: "smooth", block: "start" });
     pollJob(jobId);
   }
@@ -239,13 +244,19 @@
     const time = document.createElement("time");
     const date = event.at ? new Date(event.at) : new Date();
     time.textContent = Number.isNaN(date.getTime()) ? "--:--:--" : date.toLocaleTimeString([], { hour12: false });
+    const normalizedStage = normalizeStage(event.stage) || "queued";
+    const requestedSource = String(event.source || SOURCE_BY_STAGE[normalizedStage] || "orchestrator").toLowerCase();
+    const sourceName = EVENT_SOURCES.has(requestedSource) ? requestedSource : "orchestrator";
+    const source = document.createElement("span");
+    source.className = `log-source source-${sourceName}`;
+    source.textContent = sourceName === "orchestrator" ? "CTRL" : sourceName.toUpperCase();
     const stage = document.createElement("span");
     stage.className = "log-stage";
     stage.textContent = String(event.stage || "system").toUpperCase();
     const message = document.createElement("span");
     message.className = "log-message";
     message.textContent = String(event.message || "event received");
-    row.append(time, stage, message);
+    row.append(time, source, stage, message);
     log.append(row);
     while (log.children.length > 160) log.firstElementChild.remove();
     $("log-count").textContent = String(log.querySelectorAll(".log-line").length);
@@ -259,9 +270,14 @@
   function renderTelemetry(job) {
     const settings = job.settings && typeof job.settings === "object" ? job.settings : {};
     const profile = job.profile && typeof job.profile === "object" ? job.profile : {};
+    const infrastructure = systemMetadata.infrastructure && typeof systemMetadata.infrastructure === "object" ? systemMetadata.infrastructure : {};
+    const payment = infrastructure.x402 && typeof infrastructure.x402 === "object" ? infrastructure.x402 : {};
+    const pipeline = infrastructure.buildkite && typeof infrastructure.buildkite === "object" ? infrastructure.buildkite : {};
     $("runtime-provider").textContent = systemMetadata.runtime || "Akash dCloud";
+    $("runtime-payment").textContent = `x402 · ${payment.status || "configured"}`;
     $("runtime-model").textContent = settings.model || systemMetadata.default_model || "auto";
     $("runtime-verifier").textContent = settings.verifier || systemMetadata.verifier || "configured";
+    $("runtime-pipeline").textContent = pipeline.pipeline || "fixloop-verifier";
     $("runtime-attempt").textContent = `${job.attempt || 1} / ${settings.retry_on_rejection === false ? 1 : 2}`;
     $("runtime-languages").textContent = Array.isArray(profile.languages) && profile.languages.length ? profile.languages.join(" + ") : "profiling…";
     const commits = job.commits && typeof job.commits === "object" ? job.commits : {};
@@ -294,6 +310,26 @@
     $("issue-lifecycle-state").textContent = "OPEN";
     $("issue-lifecycle-state").className = "";
     $("issue-lifecycle-copy").textContent = "Close only after a verified pull request is published.";
+  }
+
+  function renderInfrastructure() {
+    const infrastructure = systemMetadata.infrastructure && typeof systemMetadata.infrastructure === "object" ? systemMetadata.infrastructure : {};
+    const akash = infrastructure.akash && typeof infrastructure.akash === "object" ? infrastructure.akash : {};
+    const x402 = infrastructure.x402 && typeof infrastructure.x402 === "object" ? infrastructure.x402 : {};
+    const buildkite = infrastructure.buildkite && typeof infrastructure.buildkite === "object" ? infrastructure.buildkite : {};
+
+    $("infra-akash-status").textContent = String(akash.status || "connected").toUpperCase();
+    $("infra-akash-detail").textContent = akash.deployment || akash.label || "managed lease";
+    $("infra-x402-status").textContent = String(x402.status || "demo bypass").toUpperCase();
+    $("infra-x402-detail").textContent = `${x402.network || "Base"} · $${x402.price || "0.01"} USDC`;
+    $("infra-buildkite-status").textContent = String(buildkite.status || "standby").toUpperCase();
+    $("infra-buildkite-detail").textContent = `${buildkite.pipeline || "fixloop-verifier"} · ${buildkite.mode || systemMetadata.verifier || "local"}`;
+
+    $("masthead-x402").textContent = x402.status === "enforced" ? "ENFORCED" : "BYPASS";
+    $("masthead-akash").textContent = akash.status === "connected" ? "LEASED" : String(akash.status || "LIVE").toUpperCase();
+    $("masthead-buildkite").textContent = buildkite.status === "online" ? "ONLINE" : "STANDBY";
+    $("runtime-payment").textContent = `x402 · ${x402.status || "configured"}`;
+    $("runtime-pipeline").textContent = buildkite.pipeline || "fixloop-verifier";
   }
 
   function renderVerdict(verdict, job, final) {
@@ -384,6 +420,7 @@
       if (response.ok) systemMetadata = await response.json();
       $("runtime-provider").textContent = systemMetadata.runtime || "Akash dCloud";
       $("runtime-verifier").textContent = systemMetadata.verifier || "configured";
+      renderInfrastructure();
     } catch (_) {
       // Console still works against older deployments without /system.
     }

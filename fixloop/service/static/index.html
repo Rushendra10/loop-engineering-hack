@@ -20,9 +20,10 @@
         <span>fixloop</span><sup>LABS</sup>
       </a>
       <div class="system-pills" aria-label="System status">
-        <span><i class="status-dot green"></i>AKASH <b>LIVE</b></span>
+        <span><i class="status-dot acid"></i>X402 <b id="masthead-x402">GATE</b></span>
+        <span><i class="status-dot green"></i>AKASH <b id="masthead-akash">LEASED</b></span>
         <span><i class="status-dot cyan"></i>CURSOR <b>ARMED</b></span>
-        <span><i class="status-dot violet"></i>VERIFIER <b>ONLINE</b></span>
+        <span><i class="status-dot violet"></i>BUILDKITE <b id="masthead-buildkite">READY</b></span>
       </div>
     </header>
 
@@ -117,13 +118,15 @@
         <div id="request-notice" class="request-notice" role="status" aria-live="polite" hidden></div>
 
         <div class="architecture-strip" aria-label="Execution architecture">
-          <div><span>01</span><i class="arch-icon cloud"></i><p><strong>Akash compute</strong><small>isolated runtime</small></p></div>
+          <div><span>01</span><i class="arch-icon payment"></i><p><strong>x402 admission</strong><small>machine payment</small></p></div>
           <b>→</b>
-          <div><span>02</span><i class="arch-icon cursor"></i><p><strong>Cursor agent</strong><small>test → repair</small></p></div>
+          <div><span>02</span><i class="arch-icon cloud"></i><p><strong>Akash compute</strong><small>isolated runtime</small></p></div>
           <b>→</b>
-          <div><span>03</span><i class="arch-icon shield"></i><p><strong>Adversarial gate</strong><small>prove or reject</small></p></div>
+          <div><span>03</span><i class="arch-icon cursor"></i><p><strong>Cursor agent</strong><small>test → repair</small></p></div>
           <b>→</b>
-          <div><span>04</span><i class="arch-icon branch"></i><p><strong>Verified PR</strong><small>issue resolved</small></p></div>
+          <div><span>04</span><i class="arch-icon shield"></i><p><strong>Buildkite proof</strong><small>attack + verify</small></p></div>
+          <b>→</b>
+          <div><span>05</span><i class="arch-icon branch"></i><p><strong>Verified PR</strong><small>issue resolved</small></p></div>
         </div>
 
         <div class="job-lookup">
@@ -157,11 +160,32 @@
           <li data-stage="finished"><span class="stage-node"><b>06</b></span><span class="stage-copy"><strong>Seal</strong><small>artifacts ready</small></span></li>
         </ol>
 
+        <section class="infra-pulse" aria-label="Infrastructure status">
+          <article data-infra="x402">
+            <div class="infra-mark"><i></i><span>x402</span></div>
+            <p><strong>ADMISSION GATE</strong><small id="infra-x402-detail">Base · $0.01 USDC</small></p>
+            <code id="infra-x402-status">DEMO BYPASS</code>
+          </article>
+          <article data-infra="akash">
+            <div class="infra-mark"><i></i><span>AKASH</span></div>
+            <p><strong>COMPUTE LEASE</strong><small id="infra-akash-detail">managed lease</small></p>
+            <code id="infra-akash-status">CONNECTED</code>
+          </article>
+          <article data-infra="buildkite">
+            <div class="infra-mark"><i></i><span>BK</span></div>
+            <p><strong>ADVERSARIAL PROOF</strong><small id="infra-buildkite-detail">fixloop-verifier</small></p>
+            <code id="infra-buildkite-status">STANDBY</code>
+          </article>
+        </section>
+
         <div class="telemetry-grid">
           <section class="terminal-panel" aria-labelledby="terminal-title">
             <header>
               <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
               <span id="terminal-title">ORCHESTRATION STREAM</span>
+              <div class="source-legend" aria-label="Event sources">
+                <i class="source-akash">AKASH</i><i class="source-x402">X402</i><i class="source-buildkite">BK</i>
+              </div>
               <small><b id="log-count">0</b> EVENTS</small>
             </header>
             <div id="event-log" class="event-log" role="log" aria-live="polite" aria-relevant="additions">
@@ -174,8 +198,10 @@
               <header><span>RUNTIME MATRIX</span><i class="status-dot green"></i></header>
               <dl>
                 <div><dt>Provider</dt><dd id="runtime-provider">Akash dCloud</dd></div>
+                <div><dt>Payment</dt><dd id="runtime-payment">x402 · loading</dd></div>
                 <div><dt>Model</dt><dd id="runtime-model">auto</dd></div>
                 <div><dt>Verifier</dt><dd id="runtime-verifier">local</dd></div>
+                <div><dt>Pipeline</dt><dd id="runtime-pipeline">fixloop-verifier</dd></div>
                 <div><dt>Attempt</dt><dd id="runtime-attempt">1 / 2</dd></div>
                 <div><dt>Languages</dt><dd id="runtime-languages">profiling…</dd></div>
               </dl>
@@ -225,6 +251,6 @@
       </section>
     </main>
 
-    <footer><p>Proof, not promises.</p><span>Cursor agent · Akash compute · adversarial verification</span></footer>
+    <footer><p>Proof, not promises.</p><span>x402 admission · Akash compute · Cursor repair · Buildkite proof</span></footer>
   </body>
 </html>

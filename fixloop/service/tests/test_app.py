@@ -76,9 +76,13 @@ def test_run_job_reaches_verified_pr(monkeypatch, tmp_path):
     assert service.JOBS["abc"]["pr_url"].endswith("/pull/1")
     assert service.JOBS["abc"]["issue_closed"] is True
     assert closed[0][2:] == (7, "https://github.com/acme/widget/pull/1")
-    messages = [event["message"] for event in service.JOBS["abc"]["events"]]
-    assert any("Provisioning isolated workspace" in message for message in messages)
+    events = service.JOBS["abc"]["events"]
+    messages = [event["message"] for event in events]
+    assert any("Akash lease attached" in message for message in messages)
     assert any("Run complete" in message for message in messages)
+    assert all("source" in event for event in events)
+    assert any(event["source"] == "akash" for event in events)
+    assert any(event["source"] == "github" for event in events)
     assert service.JOBS["abc"]["profile"]["source_roots"] == ["src"]
 
 
@@ -87,6 +91,9 @@ def test_system_status_contains_no_secrets():
     assert status["runtime"]
     assert status["verifier"] in {"local", "buildkite"}
     assert "commit_contract" in status
+    assert set(status["infrastructure"]) == {"akash", "x402", "buildkite"}
+    assert status["infrastructure"]["akash"]["status"] == "connected"
+    assert status["infrastructure"]["buildkite"]["pipeline"]
     assert all("token" not in key.casefold() and "secret" not in key.casefold() for key in status)
 
 

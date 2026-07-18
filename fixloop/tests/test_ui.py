@@ -28,6 +28,9 @@ def test_console_and_assets_are_served() -> None:
     assert page.headers["cache-control"] == "no-store"
     assert "The agent proposes" in page.text
     assert "ORCHESTRATION STREAM" in page.text
+    assert "x402 admission" in page.text
+    assert "Buildkite proof" in page.text
+    assert 'class="infra-pulse"' in page.text
     assert 'id="model-input"' in page.text
     assert 'id="event-log"' in page.text
     assert "COMMIT CONTRACT" in page.text
@@ -49,6 +52,8 @@ def test_console_and_assets_are_served() -> None:
     assert 'fetch("/system"' in script.text
     assert "retry_on_rejection" in script.text
     assert "issue_closed" in script.text
+    assert "log-source" in script.text
+    assert "renderInfrastructure" in script.text
 
 
 def test_missing_asset_is_not_silently_rewritten() -> None:
