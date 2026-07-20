@@ -28,7 +28,7 @@ def test_run_job_reaches_verified_pr(monkeypatch, tmp_path):
             return "main"
         raise AssertionError(command)
 
-    def fake_agent(target, issue, issue_text, reason_codes=None, deadline_s=900):
+    def fake_agent(target, issue, issue_text, reason_codes=None, deadline_s=900, model="auto"):
         result = {
             "base_sha": "base",
             "test_sha": "test",
@@ -60,6 +60,13 @@ def test_run_job_reaches_verified_pr(monkeypatch, tmp_path):
         "branch": None,
         "attempt": 1,
         "stage": "queued",
+        "events": [],
+        "settings": {
+            "model": "auto",
+            "deadline_s": 900,
+            "retry_on_rejection": True,
+            "close_issue": True,
+        },
     }
     service.run_job("abc")
 
@@ -69,6 +76,25 @@ def test_run_job_reaches_verified_pr(monkeypatch, tmp_path):
     assert service.JOBS["abc"]["pr_url"].endswith("/pull/1")
     assert service.JOBS["abc"]["issue_closed"] is True
     assert closed[0][2:] == (7, "https://github.com/acme/widget/pull/1")
+    events = service.JOBS["abc"]["events"]
+    messages = [event["message"] for event in events]
+    assert any("Akash lease attached" in message for message in messages)
+    assert any("Run complete" in message for message in messages)
+    assert all("source" in event for event in events)
+    assert any(event["source"] == "akash" for event in events)
+    assert any(event["source"] == "github" for event in events)
+    assert service.JOBS["abc"]["profile"]["source_roots"] == ["src"]
+
+
+def test_system_status_contains_no_secrets():
+    status = service.system_status()
+    assert status["runtime"]
+    assert status["verifier"] in {"local", "buildkite"}
+    assert "commit_contract" in status
+    assert set(status["infrastructure"]) == {"akash", "x402", "buildkite"}
+    assert status["infrastructure"]["akash"]["status"] == "connected"
+    assert status["infrastructure"]["buildkite"]["pipeline"]
+    assert all("token" not in key.casefold() and "secret" not in key.casefold() for key in status)
 
 
 def test_open_pr_requires_token(monkeypatch, tmp_path):
@@ -106,3 +132,22 @@ def test_verifier_config_uses_profile_roots(monkeypatch, tmp_path):
     generated = path.read_text()
     assert "packages/api/tests" in generated
     assert "packages/api/src" in generated
+
+
+def test_verifier_config_selects_node_for_javascript_profile(monkeypatch, tmp_path):
+    base = tmp_path / "base.yml"
+    base.write_text("test_paths: [tests/]\nsrc_paths: [src/]\nsuite_target: tests\n")
+    monkeypatch.setattr(service, "VERIFIER_CFG", base)
+    path = service._verifier_config(
+        {
+            "profile": {
+                "languages": ["typescript"],
+                "test_roots": ["tests"],
+                "source_roots": ["src"],
+            }
+        },
+        tmp_path / "verdict.json",
+    )
+    generated = path.read_text()
+    assert "test_framework: node" in generated
+    assert "--test-reporter=junit" in generated

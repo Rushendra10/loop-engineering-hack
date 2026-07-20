@@ -151,7 +151,7 @@ def main():
         hb_root = args.holdback_root or cfg.get("holdback_root")
         if hb_root:
             hb = Path(hb_root) / args.issue
-            if hb.is_dir() and any(hb.glob("test_*.py")):
+            if hb.is_dir() and any(hb.glob("test_*.*")):
                 r = runner.run_holdback(wt_fix, hb, cfg)
                 verdict["probes"]["metamorphic"] = r
                 if not r["ok"]:
